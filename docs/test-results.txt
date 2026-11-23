@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: T01: 25 independent-connection races preserve the $100 budget
+ok 1 - T01: 25 independent-connection races preserve the $100 budget
+  ---
+  duration_ms: 30302.1612
+  type: 'test'
+  ...
+# Subtest: T02/T03: concurrent approval retries create one order and bind keys to inputs
+ok 2 - T02/T03: concurrent approval retries create one order and bind keys to inputs
+  ---
+  duration_ms: 113.6234
+  type: 'test'
+  ...
+# Subtest: T02: different concurrent approval keys cannot reserve twice
+ok 3 - T02: different concurrent approval keys cannot reserve twice
+  ---
+  duration_ms: 130.2756
+  type: 'test'
+  ...
+# Subtest: T04: known request IDs cannot cross organizations or authenticated owners
+ok 4 - T04: known request IDs cannot cross organizations or authenticated owners
+  ---
+  duration_ms: 57.9964
+  type: 'test'
+  ...
+# Subtest: T05: roles, draft ownership, and separation of duties are enforced server-side
+ok 5 - T05: roles, draft ownership, and separation of duties are enforced server-side
+  ---
+  duration_ms: 51.8172
+  type: 'test'
+  ...
+# Subtest: T06: a crash after vendor acceptance retries one persistent vendor order
+ok 6 - T06: a crash after vendor acceptance retries one persistent vendor order
+  ---
+  duration_ms: 49.3899
+  type: 'test'
+  ...
+# Subtest: T07/T08: concurrent duplicate early receipts transfer funds once and cannot regress
+ok 7 - T07/T08: concurrent duplicate early receipts transfer funds once and cannot regress
+  ---
+  duration_ms: 159.8374
+  type: 'test'
+  ...
+# Subtest: T09/T13: receipt validation rejects tampering and event collisions without ledger changes
+ok 8 - T09/T13: receipt validation rejects tampering and event collisions without ledger changes
+  ---
+  duration_ms: 68.4341
+  type: 'test'
+  ...
+# Subtest: integer money validation rejects invalid inputs before creating a request
+ok 9 - integer money validation rejects invalid inputs before creating a request
+  ---
+  duration_ms: 39.2412
+  type: 'test'
+  ...
+# Subtest: calendar date validation rejects impossible dates
+ok 10 - calendar date validation rejects impossible dates
+  ---
+  duration_ms: 39.2527
+  type: 'test'
+  ...
+# Subtest: T10: abrupt process loss before COMMIT rolls back; loss after COMMIT replays
+ok 11 - T10: abrupt process loss before COMMIT rolls back; loss after COMMIT replays
+  ---
+  duration_ms: 665.8508
+  type: 'test'
+  ...
+# Subtest: T12: an expired dispatch lease can be reclaimed and the stale owner is fenced
+ok 12 - T12: an expired dispatch lease can be reclaimed and the stale owner is fenced
+  ---
+  duration_ms: 38.1999
+  type: 'test'
+  ...
+# Subtest: exhausted expired dispatch leases become visible failures
+ok 13 - exhausted expired dispatch leases become visible failures
+  ---
+  duration_ms: 52.3767
+  type: 'test'
+  ...
+# Subtest: concurrent receive key reuse with changed order cannot apply both receipts
+ok 14 - concurrent receive key reuse with changed order cannot apply both receipts
+  ---
+  duration_ms: 904.3446
+  type: 'test'
+  ...
+# Subtest: concurrent dispatch key reuse with changed input cannot contact two orders
+ok 15 - concurrent dispatch key reuse with changed input cannot contact two orders
+  ---
+  duration_ms: 148.3782
+  type: 'test'
+  ...
+# Subtest: database constraints independently prevent negative and overspent budgets
+ok 16 - database constraints independently prevent negative and overspent budgets
+  ---
+  duration_ms: 238.3769
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 37088.447
