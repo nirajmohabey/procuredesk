@@ -6,6 +6,11 @@
   "outputDirectory": "vercel-entry",
   "redirects": [
     {
+      "source": "/",
+      "destination": "https://procuredesk-niraj.flowerycider4.chatgpt.site/",
+      "permanent": false
+    },
+    {
       "source": "/:path*",
       "destination": "https://procuredesk-niraj.flowerycider4.chatgpt.site/:path*",
       "permanent": false
