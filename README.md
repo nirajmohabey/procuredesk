@@ -1,95 +1,95 @@
 # ProcureDesk
 
-A purchasing workspace that keeps the budget correct when approvals compete and delivery events repeat.
+A purchasing workspace that connects employee requests, budget-safe approvals, purchase orders, and simulated receipts.
 
-[Open the live demo](https://procuredesk-niraj.flowerycider4.chatgpt.site) · [Source repository](https://github.com/nirajmohabey/procuredesk) · [Verification evidence](docs/VERIFICATION.md)
+[Native application URL](https://procuredesk-xi.vercel.app) · [Source](https://github.com/nirajmohabey/procuredesk) · [Native hosting and verification status](docs/NATIVE_VERCEL.md) · [Operator handoff](docs/OPERATOR_HANDOFF.md)
 
-The public demo uses ChatGPT sign-in to create an isolated workspace for each visitor.
+**Current source:** native Next.js App Router on the Node.js runtime, with Neon PostgreSQL and a first-party browser-private demo session. The Vercel application serves its own interface and API; it does not redirect visitors to Sites or require ChatGPT, Google, or another external account. **Native deployment promotion and hosted acceptance are pending verification.** The release receipt must identify the verified commit and deployment before these are marked complete.
 
-[Purchasing pilot record](docs/PURCHASING_PILOT.md) · [Operator handoff](docs/OPERATOR_HANDOFF.md)
+Opening the application creates an isolated demo workspace for that browser. A signed, HttpOnly cookie retains access for 30 days. Another browser has a separate workspace; clearing the site's cookies or allowing access to expire loses access to the previous demo workspace. The four selectable personas are fictional roles within that workspace, not real colleagues or company accounts.
 
-[Vercel entry hosting](docs/VERCEL_ENTRY.md): the Vercel project forwards visitors to the canonical Sites/D1 application.
-
-The pilot record is an internal, AI-assisted simulated stakeholder exercise. Independent customer participation and business savings are not claimed.
-
-![ProcureDesk purchasing workspace](docs/screenshots/procuredesk-overview.jpg)
-
-Create a request, submit it, switch to an approver, reserve its budget, dispatch a simulated order, and record its receipt. Every decision has a readable audit trail. A built-in Reliability lab exercises the same backend services against an isolated fixture.
+The new PostgreSQL deployment starts with fresh sample data. Existing Sites/D1 workspaces remain on the historical Sites deployment; there is no silent identity or data migration.
 
 ## Run locally
 
-Requires Node.js 24 or newer, npm, and Git. No Docker or external database account is required.
+Requires Node.js 24 or newer, npm, Git, and a dedicated PostgreSQL database. Configure `DATABASE_URL`, optional migration connection `DATABASE_URL_UNPOOLED`, and `SESSION_SECRET` in an ignored `.env.local`. Keep their values out of source. See [native setup](docs/NATIVE_VERCEL.md) for the environment contract.
 
 ```sh
 npm ci --no-audit --no-fund
-npm run build
-npm run db:migrate
+node scripts/migrate-postgres.mjs
 npm run dev
 ```
 
-Open the loopback URL printed by the development server. Use the app's **Sign in with ChatGPT** link; on loopback development only, the starter supplies a local test identity. The production build excludes that adapter. The first authenticated workspace visit seeds the demo records in the migrated database. Stop the server with Ctrl+C.
+Open the loopback URL printed by Next.js. There is no external sign-in step. The first workspace request seeds fictional organizations and purchasing records after the schema migration has been applied. Stop the server with Ctrl+C.
 
 ```sh
 npm run typecheck
-npm test
+npm run build
+npm start
 ```
 
-`npm run db:migrate` applies only pending local migrations. Local data lives under ignored `.wrangler/state`. Hosted data is separate. Start development with `npm run dev` after initial setup; rebuilding and migrating is necessary only when the corresponding source or schema changes.
+The database migration is an explicit maintainer operation before promotion. Request handlers do not create or alter tables. `scripts/migrate-postgres.mjs` applies versioned `postgres/*.sql`, records their hashes, and refuses changed applied migrations. The legacy `db:migrate` command targets the old local D1 store; use the PostgreSQL script for this native deployment.
 
-## Two-minute walkthrough
+## Try the workflow
 
-1. Explore Overview, Requests, Approvals, Budgets, Purchase orders, and Activity as Alex, the approver.
-2. Select Maya, the employee. Create an equipment request and submit it. Submission freezes its commercial details.
-3. Select Alex. Open the request, review the available department budget, and approve. The amount becomes reserved immediately.
-4. Open Purchase orders. Dispatch the simulated order, then record its receipt. Reserved funds become spent; available funds stay unchanged by fulfillment.
-5. Open Reliability lab and run its checks. Inspect the competing USD 70 approvals against a USD 100 budget, dispatch recovery, receipt deduplication, and access checks.
+1. Select Maya, create an equipment request, save it, and submit. Submission freezes the commercial details.
+2. Select Alex, open the request, inspect the department's available funds, and approve. The amount becomes reserved and one purchase order is created.
+3. Open Purchase orders. **Dispatch next order** handles one eligible queued job, oldest first. An older seeded order may be processed first; inspect the matching purchase-order number and queue state.
+4. Simulate the intended order's receipt. Reserved funds become spent; available funds remain unchanged by fulfillment. Inspect its timeline and budget ledger.
+5. Run Reliability lab as Alex or Niraj. Jordan is read-only finance; only the Niraj administrator persona can reset the selected demonstration organization.
 
-The persona switcher is a product demonstration inside your own authenticated sandbox. It does not impersonate other real accounts. Each authenticated Site user owns an independent sandbox; Atlas and Nova are distinct demo organizations within it. Jordan is read-only finance. Admin can manage the demo and approve other people's requests. No persona can approve its own request.
+**Queue for dispatch** requeues a stopped job but does not send it. After the queue action, use **Dispatch next order** separately. An active lease must expire before requeue. See the [operator handoff](docs/OPERATOR_HANDOFF.md) for recovery and escalation.
 
-## Accounting rules
+## Accounting and authorization
 
-- All money is integer USD cents. Available = limit - reserved - spent.
-- Approval atomically reserves funds and creates one internal order, audit event, and outbox job.
-- A signed receipt atomically transfers the amount from reserved to spent once.
-- Drafts can be edited by their owner. Submitted and approved amounts are immutable.
-- Client roles and totals are never authoritative. Server permission checks and tenant-scoped database constraints protect mutations.
-- Idempotency keys bind a mutation to its validated inputs. Changed input under the same scoped key returns a conflict.
+- Currency is integer USD cents. Available = limit - reserved - spent.
+- Approval commits a budget reservation, purchase order, audit event, and outbox intent together.
+- PostgreSQL budget-row locking and constraints protect competing approvals; these require native PostgreSQL verification, not an inference from old SQLite results.
+- A valid signed receipt moves funds from reserved to spent once. Duplicate receipts and late dispatch acknowledgements must preserve terminal state.
+- Only the requester edits or submits a draft. Submitted values are immutable. No persona can approve or reject its own request.
+- The server verifies the browser session and organization/persona permissions. Client roles and balances do not grant authority.
+- Idempotency keys bind an operation to its validated inputs; changed input under the same scoped key conflicts.
 
-## Architecture
+## Current architecture
 
 ```mermaid
 flowchart LR
-    Browser[React workspace] --> Auth[Sites identity boundary]
-    Auth --> API[TypeScript route handlers]
-    API --> Service[Authorized domain services]
-    Service --> DB[(D1 / SQLite)]
-    DB --> Outbox[Leased dispatch job]
+    Browser[React purchasing workspace] --> Session[First-party browser session]
+    Session --> API[Next.js Node route handlers]
+    API --> Service[Scoped domain services]
+    Service --> DB[(Neon PostgreSQL)]
+    DB --> Outbox[Leased dispatch intent]
     Outbox --> Vendor[Durable vendor simulator]
-    Vendor --> Receipt[HMAC receipt handler]
+    Vendor --> Receipt[Signed receipt service]
     Receipt --> DB
 ```
 
-The web runtime is Vinext with Next.js App Router APIs, React, and TypeScript. Zod validates input. Drizzle declares the SQLite schema; SQL triggers implement critical accounting transitions. Cloudflare D1 runs the hosted database. Tests execute the actual service and migrations against real SQLite files, including independent connection races. Source and lockfile are included.
+The native `pg` adapter executes each domain batch on one PostgreSQL connection from BEGIN through COMMIT or ROLLBACK. PostgreSQL migrations define its tables, accounting triggers, row locks, and constraints. Zod validates input. The purchasing interface, operation keys, leased outbox, and simulator boundaries are retained from the earlier product.
 
-## Scope and release boundaries
+## Verification and historical evidence
 
-This is a hosted portfolio sandbox, with real persistence and authentication and a simulated supplier. It never sends a real purchase or payment. Dispatch is explicitly operator-triggered; it is not a continuously running background daemon. Delivery remains pending until dispatched or retried. The deliberate crash mode leaves a leased job for recovery.
+Native build, session isolation, PostgreSQL concurrency/recovery, hosted browser workflow, and production-alias checks must have their own dated results and commit references. Their current publication status is tracked in [NATIVE_VERCEL.md](docs/NATIVE_VERCEL.md). A configured test or deployment is not an executed result.
 
-The supplied handbook describes PostgreSQL, Docker, a separate worker, and AWS. This implementation adapts deployment to Sites/Cloudflare D1 and a request-driven dispatcher. It preserves the purchasing workflow and accounting invariants, but SQLite race results do not establish PostgreSQL row-lock behavior. See [architecture and operating notes](docs/ARCHITECTURE.md) and [verification evidence](docs/VERIFICATION.md).
+The original [verification report](docs/VERIFICATION.md) and [purchasing pilot](docs/PURCHASING_PILOT.md) are **historical Sites/D1 release evidence**. The recorded 16-test SQLite suite, its 25 independent-connection race fixtures, five hosted lab checks, and simulated pilot observations are not relabeled as native PostgreSQL or new Vercel results. The pilot was an internal AI-assisted exercise with fictional personas; no independent customer participation, paid client work, or business savings are claimed.
 
-One item per request; USD only; whole-order receipts. No refunds, cancellation after approval, tax engine, multi-stage approval, attachments, live vendor integration, membership administration, or claims of production compliance. Production organizational use would require real membership provisioning, an autonomous dispatcher, backup/restore drills, operational monitoring, and an external supplier contract.
+The retained `npm test` SQLite suite supplies compatibility evidence. The separate PostgreSQL suite is `tests/postgres.integration.test.mjs`; its execution and database environment must be recorded separately. Passing SQLite checks cannot establish PostgreSQL locking behavior or hosted performance.
+
+## Scope
+
+This is a portfolio sandbox with persistent records and a simulated supplier. No real purchase, payment, supplier message, or automatic fulfillment occurs. Both sides of the durable simulator use the application database. Dispatch is operator-triggered, not an autonomous worker daemon.
+
+One item per request; USD only; seeded November 2026 monthly budgets; whole-order receipts. Refunds, approved-order cancellation, tax calculation, multi-stage approvals, attachments, real company membership provisioning, and external supplier integration are outside this release. No production compliance, customer adoption, throughput benchmark, availability SLA, or tested backup restoration is claimed.
 
 ## Source map
 
 | Location | Responsibility |
 | --- | --- |
-| `app/` | Workspace UI and HTTP routes |
-| `src/server/` | Authorization, mutations, receipts, simulator, reliability lab |
-| `db/schema.ts`, `drizzle/` | Database model and versioned migrations |
-| `tests/` | Real-database integration and concurrency checks |
-| `docs/` | Decisions, operating notes, measured verification |
-| `.openai/hosting.json` | Site identity and database binding, no secrets |
+| `app/` | Purchasing UI and native Next.js HTTP routes |
+| `src/server/http.ts`, `src/server/session.ts` | Browser owner session and HTTP boundary |
+| `src/server/service.ts`, `src/server/postgres.ts` | Domain operations and native PostgreSQL adapter |
+| `postgres/`, `scripts/migrate-postgres.mjs` | Explicit, versioned PostgreSQL migrations |
+| `tests/postgres*.mjs`, `tests/session.test.mjs` | Native database and browser-session acceptance checks |
+| `docs/` | Current operating handoff and separately labeled historical evidence |
+| `vite.config.ts`, `worker/`, `drizzle/`, `.openai/` | Retained legacy Sites/D1 implementation assets |
 
-Hosted publication uses the Sites workflow. The tracked Site ID belongs to this deployment; do not reuse it for an independent fork. Credentials are never part of source or deliverables.
-
-For an independent fork, remove the `project_id` from `.openai/hosting.json` before registering a new Site. Keep the `d1` database binding. Local development needs no Site registration.
+The optional `dev:sites`, `build:sites`, and `start:sites` scripts retain legacy tooling for reference. The current source's HTTP/session boundary is native Node/PostgreSQL; those script names alone do not establish a working dual-runtime release. The old Sites deployment remains a separate historical application.

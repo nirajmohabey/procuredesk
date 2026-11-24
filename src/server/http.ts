@@ -1,15 +1,32 @@
-import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "../../app/chatgpt-auth";
+import { cookies } from "next/headers";
+import { attachDatabasePool } from "@vercel/functions";
+import { createPostgresDatabase } from "./postgres";
+import { issueSession, verifySession } from "./session";
+import { isSameOrigin } from "./origin";
 import { DomainError, type Database } from "./service";
 
+const runtime = globalThis as typeof globalThis & { procuredeskDatabase?: { url: string; database: Database } };
+
 export function database(): Database {
-  if (!env.DB) throw new DomainError("DATABASE_UNAVAILABLE", "Workspace storage is temporarily unavailable.", 503);
-  return env.DB as unknown as Database;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new DomainError("DATABASE_UNAVAILABLE", "Workspace storage is temporarily unavailable.", 503);
+  if (!runtime.procuredeskDatabase || runtime.procuredeskDatabase.url !== connectionString) {
+    const database = createPostgresDatabase(connectionString);
+    if (process.env.VERCEL === "1") attachDatabasePool(database.pool);
+    runtime.procuredeskDatabase = { url: connectionString, database };
+  }
+  return runtime.procuredeskDatabase.database;
 }
 export async function owner() {
-  const user = await getChatGPTUser();
-  if (!user) throw new DomainError("UNAUTHENTICATED", "Sign in with ChatGPT to open your private demo workspace.", 401);
-  return user.userId;
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || Buffer.byteLength(secret, "utf8") < 32) throw new DomainError("SESSION_UNAVAILABLE", "Private demo sessions are temporarily unavailable.", 503);
+  const jar = await cookies();
+  const cookieName = process.env.VERCEL === "1" ? "__Host-procuredesk-session" : "procuredesk-session";
+  const existing = verifySession(jar.get(cookieName)?.value, secret);
+  if (existing) return existing;
+  const session = issueSession(secret);
+  jar.set(cookieName, session.token, { httpOnly: true, secure: process.env.VERCEL === "1", sameSite: "lax", path: "/", maxAge: session.maxAge });
+  return session.owner;
 }
 export function json(data: unknown, status = 200, requestId = crypto.randomUUID()) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Request-ID": requestId, "X-Content-Type-Options": "nosniff" } });
@@ -20,8 +37,7 @@ export function errorResponse(error: unknown, requestId: string) {
   return json({ error: { code: domain.code, message: domain.message }, requestId }, domain.status, requestId);
 }
 export function checkOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  if (!origin || origin !== new URL(request.url).origin || request.headers.get("sec-fetch-site") === "cross-site") {
+  if (!isSameOrigin(request, process.env.VERCEL === "1")) {
     throw new DomainError("ORIGIN_DENIED", "This action must start from the ProcureDesk workspace.", 403);
   }
 }

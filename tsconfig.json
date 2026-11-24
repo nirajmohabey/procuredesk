@@ -28,8 +28,7 @@
       ]
     },
     "types": [
-      "node",
-      "@cloudflare/workers-types"
+      "node"
     ]
   },
   "include": [
@@ -48,6 +47,13 @@
     ".wrangler",
     ".sites-runtime",
     "outputs",
-    "work"
+    "work",
+    "worker",
+    "vite.config.ts",
+    "scripts/vite",
+    "db/index.ts",
+    "cloudflare-env.d.ts",
+    "lib/connector-preview.d.ts",
+    "app/chatgpt-auth.ts"
   ]
 }

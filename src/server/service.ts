@@ -7,7 +7,7 @@ export interface Statement {
   all<T = Record<string, unknown>>(): Promise<{ results: T[]; meta?: { changes?: number } }>;
   run(): Promise<{ results?: unknown[]; meta?: { changes?: number } }>;
 }
-export interface Database { prepare(sql: string): Statement; batch(statements: Statement[]): Promise<unknown[]>; }
+export interface Database { readonly dialect?: "postgres" | "sqlite"; prepare(sql: string): Statement; batch(statements: Statement[]): Promise<unknown[]>; }
 type Row = Record<string, any>;
 export class DomainError extends Error {
   code: string; status: number;
@@ -131,6 +131,9 @@ async function priorResult(db: Database,scope:string,actor:string,action:string,
 async function mutate(db:Database,scope:string,actor:string,action:string,key:string,hash:string,statements:Statement[],result:Row,assertChange=true) {
   const prior=await priorResult(db,scope,actor,action,key,hash);if(prior)return prior;
   const guard=token();
+  // SQLite serializes writers. PostgreSQL needs an explicit per-workspace
+  // allocator lock so two valid creates cannot both choose MAX(number)+1.
+  if(db.dialect==="postgres"&&action==="create")statements.unshift(prep(db,"SELECT scope FROM workspaces WHERE scope=? FOR UPDATE",scope));
   if(assertChange)statements.push(prep(db,"INSERT INTO operation_guards(id,ok) VALUES(?,CASE WHEN changes()=1 THEN 1 ELSE 0 END)",guard),prep(db,"DELETE FROM operation_guards WHERE id=?",guard));
   statements.push(prep(db,"INSERT INTO idempotency(scope,actor,operation,key,hash,result,created_at) VALUES(?,?,?,?,?,?,?)",scope,actor,action,key,hash,JSON.stringify(result),now()));
   try {await db.batch(statements);return result;} catch(error){const replay=await priorResult(db,scope,actor,action,key,hash);if(replay)return replay;throw dbError(error);}
@@ -207,13 +210,19 @@ export async function claimDispatch(db:Database,scope:string,nowMs=Date.now()):P
 }
 export async function acknowledgeDispatch(db:Database,scope:string,jobId:string,leaseToken:string,nowMs=Date.now()) {
   const time=new Date(nowMs).toISOString();
-  const statements=[
+  const locks=db.dialect==="postgres"?[
+    prep(db,"SELECT b.id FROM budgets b JOIN requests r ON r.scope=b.scope AND r.budget_id=b.id JOIN outbox o ON o.scope=r.scope AND o.request_id=r.id WHERE o.scope=? AND o.id=? AND o.status='leased' AND o.lease_token=? FOR UPDATE OF b",scope,jobId,leaseToken),
+    prep(db,"SELECT r.id FROM requests r JOIN outbox o ON o.scope=r.scope AND o.request_id=r.id WHERE o.scope=? AND o.id=? AND o.status='leased' AND o.lease_token=? FOR UPDATE OF r",scope,jobId,leaseToken),
+    prep(db,"SELECT p.id FROM purchase_orders p JOIN outbox o ON o.scope=p.scope AND o.order_id=p.id WHERE o.scope=? AND o.id=? AND o.status='leased' AND o.lease_token=? FOR UPDATE OF p",scope,jobId,leaseToken),
+    prep(db,"SELECT id FROM outbox WHERE scope=? AND id=? AND status='leased' AND lease_token=? FOR UPDATE",scope,jobId,leaseToken),
+  ]:[];
+  const statements=[...locks,
     prep(db,"UPDATE purchase_orders SET status='dispatched',updated_at=? WHERE scope=? AND status='pending_dispatch' AND id=(SELECT order_id FROM outbox WHERE scope=? AND id=? AND status='leased' AND lease_token=?)",time,scope,scope,jobId,leaseToken),
     prep(db,"UPDATE requests SET status='ordered',event_actor='vendor',updated_at=? WHERE scope=? AND status='approved' AND id=(SELECT request_id FROM outbox WHERE scope=? AND id=? AND status='leased' AND lease_token=?)",time,scope,scope,jobId,leaseToken),
     prep(db,"UPDATE outbox SET status='delivered',lease_until=NULL,lease_token=NULL,last_error=NULL WHERE scope=? AND id=? AND status='leased' AND lease_token=?",scope,jobId,leaseToken),
   ];
   const result=await db.batch(statements) as {meta?:{changes?:number}}[];
-  return {acknowledged:result[2]?.meta?.changes===1};
+  return {acknowledged:result[result.length-1]?.meta?.changes===1};
 }
 export async function processDispatch(db:Database,scope:string,options:{crashAfterAccept?:boolean;nowMs?:number}={}) {
   const nowMs=options.nowMs??Date.now(),job=await claimDispatch(db,scope,nowMs);if(!job)return {processed:0,message:"No dispatch is ready."};

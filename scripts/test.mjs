@@ -23,5 +23,5 @@ async function compile(directory) {
   }
 }
 await compile(source);
-const run = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...process.argv.slice(2), 'tests/integration.test.mjs'], { cwd: root, stdio: 'inherit' });
+const run = spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...process.argv.slice(2), 'tests/integration.test.mjs', 'tests/session.test.mjs', 'tests/origin.test.mjs'], { cwd: root, stdio: 'inherit' });
 process.exitCode = run.status ?? 1;
