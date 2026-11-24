@@ -8,6 +8,8 @@ The public demo uses ChatGPT sign-in to create an isolated workspace for each vi
 
 [Purchasing pilot record](docs/PURCHASING_PILOT.md) · [Operator handoff](docs/OPERATOR_HANDOFF.md)
 
+[Vercel entry hosting](docs/VERCEL_ENTRY.md): the Vercel project forwards visitors to the canonical Sites/D1 application.
+
 The pilot record is an internal, AI-assisted simulated stakeholder exercise. Independent customer participation and business savings are not claimed.
 
 ![ProcureDesk purchasing workspace](docs/screenshots/procuredesk-overview.jpg)

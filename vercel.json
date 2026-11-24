@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "node -e \"process.exit(0)\"",
+  "outputDirectory": "vercel-entry",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://procuredesk-niraj.flowerycider4.chatgpt.site/:path*",
+      "permanent": false
+    }
+  ]
+}
