@@ -19,7 +19,7 @@ node scripts/test.mjs --test-reporter=tap
 
 The runner transpiles the actual `src/server/*.ts` modules into ignored `work/test-build/` files. It invokes Node's test runner against those modules. It does not copy the purchasing algorithm into the tests. Type checking and application builds are separate checks.
 
-The recorded environment was Windows x64, Node v26.13.1, and SQLite 3.54.1. The project requires Node 24 or newer. CI configuration is provided separately; a configured workflow is not evidence of an executed CI run.
+The original recorded environment was Windows x64, Node v26.13.1, and SQLite 3.54.1. The project requires Node 24 or newer. The [initial GitHub CI run](https://github.com/nirajmohabey/procuredesk/actions/runs/45281320661) also passed on Ubuntu with Node 24.22.3 at commit `aa5360ffd7e3bbd63dcbdd1c6973c0e43df28673`, including installation, type checking, all 16 integration tests, and the production build. This is executed CI evidence for that release; the pilot update's new observations and checks are recorded separately in [the purchasing pilot](PURCHASING_PILOT.md).
 
 ## What passed
 

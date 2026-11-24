@@ -23,4 +23,4 @@ The committed npm lockfile is the reproducible dependency source. The applicatio
 
 No Docker, PostgreSQL, AWS credentials, vendor account, AI API, or third-party authentication secret is needed for this release. Hosted identity and database bindings are supplied by Sites. The local-only sign-in adapter and database files are excluded from deployment/source artifacts.
 
-See VERIFICATION.md for executed acceptance evidence. CI configuration is provided; a checked-in workflow does not establish an executed hosted CI run.
+See VERIFICATION.md for executed acceptance evidence. The initial [GitHub CI run](https://github.com/nirajmohabey/procuredesk/actions/runs/45281320661) completed successfully on Ubuntu with Node.js 24.22.3 for commit `aa5360ffd7e3bbd63dcbdd1c6973c0e43df28673`: dependency installation, type checking, 16 integration tests, and the production build passed. Later executions retain their own commit and run references; historical results are not relabeled as new runs.

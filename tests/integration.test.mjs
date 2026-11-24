@@ -255,9 +255,9 @@ test('T12: an expired dispatch lease can be reclaimed and the stale owner is fen
   assert.equal((await budget(f)).spent_cents, 7000);
 });
 
-test('exhausted expired dispatch leases become visible failures', async () => {
+test('exhausted dispatch can be requeued without delivery, then dispatched once', async () => {
   const f = await fixture();
-  const { orderId } = await approved(f);
+  const { requestId, orderId } = await approved(f);
   const now = Date.now();
   for (let attempt = 0; attempt < 5; attempt++) {
     await service.processDispatch(f.db, f.scope, { crashAfterAccept: true, nowMs: now + attempt * 31000 });
@@ -267,6 +267,36 @@ test('exhausted expired dispatch leases become visible failures', async () => {
   assert.equal(job.status, 'failed');
   assert.equal(job.attempts, 5);
   assert.equal(await count(f, 'vendor_orders'), 1);
+
+  const requestBeforeRetry = await f.db.prepare('SELECT * FROM requests WHERE scope=? AND id=?').bind(f.scope, requestId).first();
+  const orderBeforeRetry = await f.db.prepare('SELECT * FROM purchase_orders WHERE scope=? AND id=?').bind(f.scope, orderId).first();
+  const budgetBeforeRetry = await budget(f);
+  const vendorOrdersBeforeRetry = await count(f, 'vendor_orders');
+  const requeued = await action(f, 'retry', { jobId: job.id }, 'alex');
+  assert.equal(requeued.ok, true);
+  assert.equal(requeued.jobId, job.id);
+  const pending = await f.db.prepare('SELECT * FROM outbox WHERE scope=? AND id=?').bind(f.scope, job.id).first();
+  assert.equal(pending.status, 'pending', 'retry requeues the job; it does not deliver it');
+  assert.equal(pending.attempts, 0);
+  assert.equal(pending.lease_token, null);
+  assert.equal(pending.lease_until, null);
+  assert.equal(await count(f, 'vendor_orders'), vendorOrdersBeforeRetry, 'requeue must not contact the vendor');
+  assert.equal((await f.db.prepare('SELECT status FROM requests WHERE scope=? AND id=?').bind(f.scope, requestId).first()).status, requestBeforeRetry.status);
+  assert.equal((await f.db.prepare('SELECT status FROM purchase_orders WHERE scope=? AND id=?').bind(f.scope, orderId).first()).status, orderBeforeRetry.status);
+  assert.deepEqual(await budget(f), budgetBeforeRetry, 'requeue must preserve the reservation and spent balance');
+
+  const dispatched = await action(f, 'dispatch', {}, 'alex');
+  assert.equal(dispatched.processed, 1);
+  assert.equal(dispatched.orderId, orderId);
+  assert.equal(dispatched.jobId, job.id);
+  const delivered = await f.db.prepare('SELECT * FROM outbox WHERE scope=? AND id=?').bind(f.scope, job.id).first();
+  assert.equal(delivered.status, 'delivered');
+  assert.equal(delivered.attempts, 1);
+  assert.equal(await count(f, 'vendor_orders'), 1, 'dispatch must reuse the vendor acceptance from the interrupted attempts');
+  assert.equal((await f.db.prepare('SELECT order_id FROM vendor_orders WHERE scope=?').bind(f.scope).first()).order_id, orderId);
+  assert.equal((await f.db.prepare('SELECT status FROM requests WHERE scope=? AND id=?').bind(f.scope, requestId).first()).status, 'ordered');
+  assert.equal((await f.db.prepare('SELECT status FROM purchase_orders WHERE scope=? AND id=?').bind(f.scope, orderId).first()).status, 'dispatched');
+  assert.deepEqual(await budget(f), budgetBeforeRetry, 'dispatch acknowledgement must not reserve or spend funds again');
 });
 
 test('concurrent receive key reuse with changed order cannot apply both receipts', async () => {

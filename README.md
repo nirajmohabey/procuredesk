@@ -6,6 +6,10 @@ A purchasing workspace that keeps the budget correct when approvals compete and 
 
 The public demo uses ChatGPT sign-in to create an isolated workspace for each visitor.
 
+[Purchasing pilot record](docs/PURCHASING_PILOT.md) · [Operator handoff](docs/OPERATOR_HANDOFF.md)
+
+The pilot record is an internal, AI-assisted simulated stakeholder exercise. Independent customer participation and business savings are not claimed.
+
 ![ProcureDesk purchasing workspace](docs/screenshots/procuredesk-overview.jpg)
 
 Create a request, submit it, switch to an approver, reserve its budget, dispatch a simulated order, and record its receipt. Every decision has a readable audit trail. A built-in Reliability lab exercises the same backend services against an isolated fixture.

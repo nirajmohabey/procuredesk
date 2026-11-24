@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-23",
+  "timezone": "America/New_York",
+  "environment": "Local Vinext development server with D1 development database",
+  "exercise": "Internal AI-assisted simulated purchasing pilot",
+  "externalParticipant": false,
+  "organization": "Nova Labs",
+  "currency": "USD",
+  "budgetDepartment": "Engineering",
+  "accountingUnit": "integer cents",
+  "baseline": {"limit": 4800000, "reserved": 354000, "spent": 320000, "available": 4126000},
+  "afterApproval": {"limit": 4800000, "reserved": 373999, "spent": 320000, "available": 4106001},
+  "afterReceipt": {"limit": 4800000, "reserved": 354000, "spent": 339999, "available": 4106001},
+  "cases": [
+    {"id": "P01", "result": "passed", "requestId": "REQ-1043", "amountCents": 19999, "observation": "Maya created a draft and submitted it; no order existed before approval."},
+    {"id": "P02", "result": "passed", "orderId": "PO-1043", "observation": "Alex approved another persona's submitted request; commercial values were locked and the amount was reserved."},
+    {"id": "P03", "result": "passed", "orderId": "PO-1039", "before": "Delivery retried safely.", "after": "Job queued. Choose Dispatch next order to send it.", "observation": "Queueing left the job pending with zero attempts. Separate dispatch delivered it with exactly one simulated vendor acceptance and no accounting movement."},
+    {"id": "P04", "result": "passed", "requestId": "REQ-1044", "amountCents": 9999900, "observation": "Over-budget approval was blocked. Request remained submitted without an order and balances did not change."},
+    {"id": "P05", "result": "passed", "observation": "Jordan could read finance records; create, dispatch and receipt controls were absent. Server denials are separately covered by integration tests."},
+    {"id": "P06", "result": "passed", "observation": "Dispatcher processed older PO-1031 before PO-1043. PO-1043 was dispatched and received once; balances reconciled. The isolated local Reliability lab passed five checks."}
+  ],
+  "checks": {"acceptancePassed": 6, "acceptanceTotal": 6, "integrationPassed": 16, "integrationFailed": 0, "approvalRaceFixturesWithinSuite": 25, "localReliabilityPassed": 5, "localReliabilityTotal": 5},
+  "limitations": ["Fictional personas operated by the development agent", "No independent stakeholder feedback", "No real supplier contact, purchase or payment", "No measured time savings or business benefit", "Shared local fixture retained prior approvals; accounting comparisons use the immediately observed baseline"]
+}
