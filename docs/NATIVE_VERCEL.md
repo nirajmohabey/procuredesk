@@ -4,19 +4,33 @@
 
 The current source runs the application directly on native Next.js App Router and Node.js, with Neon PostgreSQL. Its canonical application URL is https://procuredesk-xi.vercel.app. The root page and purchasing APIs are served by that deployment; `vercel.json` selects the Next.js preset and contains no external redirect.
 
-**Publication and hosted acceptance are pending verification.** This document describes the source and operating procedure, not a claim that a new production deployment has already passed. The maintainer must add the native commit, deployment ID, timestamp, exact production aliases, commands, and observed outcomes to the release receipt.
+**Observed production acceptance: passed on November 24, 2026.** The tested runtime source is [`f89a3de0519315bddd2e7230376e838a1a8524e3`](https://github.com/nirajmohabey/procuredesk/commit/f89a3de0519315bddd2e7230376e838a1a8524e3). Vercel deployment `dpl_C2kCtcwR2KrhJMmHBDia4V4fCuWQ` was READY, and deployment metadata matched the public `https://procuredesk-xi.vercel.app` alias to it. Its immutable deployment URL is `https://procuredesk-nt5k2xctv-niraj-mohabeys-projects.vercel.app`; generated team aliases may retain Vercel protection, so use the public configured alias for the demo.
 
-| Native acceptance scope | Status |
+The user's explicit request for the actual application on Vercel superseded the earlier handbook guidance to preserve Sites hosting. Historical Sites/D1 evidence remains archived; it is not native release evidence.
+
+| Native acceptance scope | Observed result and boundary |
 | --- | --- |
-| Dependency installation and type checking | Pending recorded native result |
-| Next.js production build | Pending recorded native result |
-| Explicit Neon/PostgreSQL migration | Pending recorded native result |
-| PostgreSQL independent-connection approval and recovery checks | Pending recorded native result |
-| First-party session issuance, tamper/expiry rejection, and owner isolation | Pending recorded native result |
-| Same-host application/API response with no Sites redirect | Pending recorded hosted result |
-| Draft, submit, separate approval, dispatch, receipt, and finance read-only journey | Pending recorded hosted result |
-| Live reliability lab and responsive/keyboard observations | Pending recorded hosted result |
-| Production aliases identify the exact verified commit | Pending recorded production result |
+| Dependency installation and type checking | PASS — clean CI installation and `npm run typecheck`, Node.js 24 on Ubuntu. |
+| Next.js production build | PASS — `npm run build` in CI and the READY native Vercel production build. |
+| Explicit Neon/PostgreSQL migration | PASS — applied explicitly to the new dedicated Free-plan Neon resource before promotion; no request-time DDL. Other applications' databases and credentials were not reused or modified. |
+| PostgreSQL independent-connection approval and recovery checks | PASS — 10 PostgreSQL cases, including 25 approval-race fixtures, on dedicated Neon during local verification and PostgreSQL 17 in CI. |
+| First-party session issuance, tamper/expiry rejection, and owner isolation | PASS — 5 session tests; production HTTP verified Secure/HttpOnly/host-only cookie issuance, persistent valid cookies, separate owner scopes, and tamper/malformed-cookie rejection. Expiry was exercised by the session tests. |
+| Same-host application/API response with no Sites redirect | PASS — public root loaded the actual app without external login; direct `/api/health` returned `nextjs-node` / `PostgreSQL`. Production HTTP checks passed 14/14. `/favicon.ico` returned an internal 308 to the working SVG. |
+| Draft, submit, separate approval, dispatch, receipt, and finance read-only journey | PASS — live Nova UI: Maya submitted $199.99 REQ-1043; Alex approved PO-1043, dispatched it after the older eligible job, and recorded its receipt. Jordan had no create, dispatch, or receipt controls and could not run the lab. |
+| Live reliability lab and responsive/keyboard observations | PASS — hosted PostgreSQL lab 5/5, unchanged ledger afterward; six views at 320×844 had no page overflow; closed navigation was inert; Escape restored navigation/Help focus; 844×390 sidebar scrolled Help into view; 1280×900 had no horizontal overflow. These are bounded observations, not a full accessibility audit. |
+| Production alias identifies the exact verified commit | PASS — public alias matched the deployment and source above; [CI run 45337425498](https://github.com/nirajmohabey/procuredesk/actions/runs/45337425498) succeeded for that source. |
+
+CI passed **34 test cases**: 24 regressions (16 legacy SQLite integration, 5 session, 3 origin) plus 10 PostgreSQL cases, with zero failures. The 25 PostgreSQL race fixtures are repetitions inside one of the 10 cases, not 25 additional cases. The SQLite suite separately retains its own 25 race fixtures and process-exit/commit-boundary tests. Native PostgreSQL crash recovery was tested through the service's fault/lease fixtures; no new PostgreSQL OS-process-kill repeat was performed.
+
+Production HTTP acceptance ran at **2026-11-24 06:03:13–06:03:16 UTC** with fresh private cookie jars. Its separate $70 Atlas request `REQ-15BFADF4` created one PO-1043/outbox job, one simulated vendor acceptance, and one accounting transfer despite retries and duplicate receipt events. These records are in a different owner scope from the UI exercise below.
+
+| Live Nova UI ledger | Reserved | Spent | Available |
+| --- | ---: | ---: | ---: |
+| Before the $199.99 exercise | $1,440.00 | $3,200.00 | $43,360.00 |
+| After Alex approved PO-1043 | $1,639.99 | $3,200.00 | $43,160.01 |
+| After receipt; unchanged after the 5/5 lab | $1,440.00 | $3,399.99 | $43,160.01 |
+
+The browser's approved record survived reload across the native deployment update. The simulated vendor did not contact a supplier. This is an internal AI-assisted acceptance exercise, with no external customer, participant feedback, or measured savings claim.
 
 ## First-party demo access
 
@@ -74,7 +88,7 @@ node --test tests/session.test.mjs
 
 Record the command, source commit, runtime, database environment, fixture repetitions, counts, failures/skips, and raw output. Include matching-key and conflicting-key approvals, independent connections, budget accounting, receipt deduplication, lease fencing, and cross-owner/organization denial as implemented by the suite. Do not claim a scenario passed merely because its test file exists.
 
-The historical 16-test SQLite result and 25 race fixtures are not PostgreSQL proof. Any newly executed compatibility, native database, session, browser, and hosted lab results remain separate scopes. A native race test is not a cloud throughput benchmark.
+The historical 16-test SQLite result and 25 race fixtures are not PostgreSQL proof. The executed compatibility, native database, session, browser, and hosted lab results above remain separate scopes. A native race test is not a cloud throughput benchmark.
 
 ## Promotion checklist
 
@@ -86,7 +100,7 @@ The historical 16-test SQLite result and 25 race fixtures are not PostgreSQL pro
 6. Exercise the purchasing journey, permissions, simulated recovery, receipt accounting, and reliability lab. Match visible purchase-order numbers because dispatch handles one eligible job, oldest first.
 7. Promote only the verified candidate. Confirm the production alias and deployment metadata identify that exact Git commit; a passing preview alone does not establish the production release. Repeat a bounded same-host/read/write check on the production URL and record the outcome.
 
-Production observations remain pending until their actual results are attached. Do not convert this checklist into a passed report without execution.
+The completed release observations are recorded above. Repeat this checklist for future runtime or infrastructure releases; the current result does not establish acceptance for an untested deployment.
 
 ## Data boundary and rollback
 
@@ -94,7 +108,7 @@ The native Neon database starts with fresh fictional data for new browser sessio
 
 For a regression, choose a previously verified **native Vercel deployment** that is compatible with the current PostgreSQL schema and environment. Rollback changes application code; it does not reverse migrations or accounting events. Keep applied migration files and hashes immutable. If no compatible candidate exists, prepare a forward fix instead of altering the database to fit an older binary. Session-secret rotation is a separate access-impacting operation, not an application rollback.
 
-No backup restoration drill, external vendor contract, production availability SLA, real-company membership management, customer adoption, or business savings is established by this migration. See [operator handoff](OPERATOR_HANDOFF.md) for the unchanged purchasing/recovery workflow.
+No backup restoration drill, production-load benchmark, external vendor contract, production availability SLA, real-company membership management, customer adoption, or business savings is established by this migration. Read results remain bounded at 500 requests, 250 events, and 100 outbox jobs, without pagination. See [operator handoff](OPERATOR_HANDOFF.md) for the unchanged purchasing/recovery workflow.
 
 ## Historical release evidence
 
