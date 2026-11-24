@@ -34,7 +34,18 @@ function Status({ value }: { value: string }) { return <span className={`status 
 function Avatar({ name, small = false }: { name: string; small?: boolean }) { return <span className={`avatar ${small ? "avatar-small" : ""}`} aria-hidden="true">{initials(name)}</span>; }
 function Dialog({ children, onClose, title, wide = false }: { children: ReactNode; onClose: () => void; title: string; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => { const el = ref.current; el?.showModal(); return () => { el?.close(); }; }, []);
+  useEffect(() => {
+    const el = ref.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    el?.showModal();
+    return () => {
+      el?.close();
+      queueMicrotask(() => {
+        const openDialog = document.querySelector<HTMLDialogElement>("dialog[open]");
+        if (opener?.isConnected && (!openDialog || openDialog.contains(opener))) opener.focus({ preventScroll: true });
+      });
+    };
+  }, []);
   return <dialog ref={ref} className={`dialog ${wide ? "dialog-wide" : ""}`} aria-label={title} onCancel={(e) => { e.preventDefault(); onClose(); }} onClick={(e) => { if (e.target === ref.current) { const r = ref.current!.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }}><div className="dialog-header"><div><span className="eyebrow">PROCUREDESK</span><h2>{title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button></div>{children}</dialog>;
 }
 function Empty({ title, text, action }: { title: string; text: string; action?: ReactNode }) { return <div className="empty-state"><span className="empty-icon"><ClipboardList size={26} /></span><h3>{title}</h3><p>{text}</p>{action}</div>; }
